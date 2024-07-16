@@ -152,11 +152,17 @@
         });
 
         document.getElementById('createVoucherButton').addEventListener('click', function () {
-            fetch('http://52.54.239.52:8080/new-address')
+            const voucherCode = generateVoucherCode();
+            fetch('http://52.54.239.52:8080/new-address', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: voucherCode })
+            })
                 .then(response => response.json())
                 .then(data => {
                     const depositAddress = data.address;
-                    const voucherCode = generateVoucherCode();
                     document.getElementById('depositAddress').value = depositAddress;
                     document.getElementById('voucherCode').value = voucherCode;
                     document.getElementById('qrCodeContainer').style.display = 'block';

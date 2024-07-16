@@ -34,15 +34,25 @@ struct RpcResponse {
     id: String,
 }
 
-async fn get_new_address(client: web::Data<Client>, rpc_url: web::Data<String>) -> impl Responder {
+#[derive(Deserialize)]
+struct VoucherCode {
+    code: String,
+}
+
+async fn get_new_address(
+    client: web::Data<Client>,
+    rpc_url: web::Data<String>,
+    code: web::Json<VoucherCode>,
+) -> impl Responder {
     println!("Accessed /new-address");
     let rpc_user = "marachain";
     let rpc_pass = "marachain";
+    let label = &code.code;
     let rpc_request = serde_json::json!({
         "jsonrpc": "1.0",
         "id": "curltest",
         "method": "getnewaddress",
-        "params": ["voucheraddr"]
+        "params": [label]
     });
 
     let response = client
@@ -128,7 +138,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(client.clone()))
             .app_data(web::Data::new(rpc_url.clone()))
             .route("/", web::get().to(index))
-            .route("/new-address", web::get().to(get_new_address))
+            .route("/new-address", web::post().to(get_new_address))
             .route("/new-code", web::get().to(get_new_code))
             .route("/accept", web::post().to(accept_address_and_code))
             .service(actix_files::Files::new("/static", "./static").show_files_listing())

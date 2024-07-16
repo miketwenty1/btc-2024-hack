@@ -2,6 +2,7 @@ use actix_files::NamedFile;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::path::PathBuf;
 
 async fn index() -> impl Responder {
@@ -33,9 +34,8 @@ struct RpcResponse {
     id: String,
 }
 
-async fn get_new_address(client: web::Data<Client>) -> impl Responder {
+async fn get_new_address(client: web::Data<Client>, rpc_url: web::Data<String>) -> impl Responder {
     println!("Accessed /new-address");
-    let rpc_url = "http://marachain:18332/";
     let rpc_user = "marachain";
     let rpc_pass = "marachain";
     let rpc_request = serde_json::json!({
@@ -46,7 +46,7 @@ async fn get_new_address(client: web::Data<Client>) -> impl Responder {
     });
 
     let response = client
-        .post(rpc_url)
+        .post(rpc_url.get_ref())
         .basic_auth(rpc_user, Some(rpc_pass))
         .header("Content-Type", "text/plain")
         .json(&rpc_request)
@@ -105,11 +105,15 @@ async fn accept_address_and_code(data: web::Json<AcceptData>) -> impl Responder 
 async fn main() -> std::io::Result<()> {
     let client = Client::new();
 
+    // Get RPC URL from environment variable or use a default
+    let rpc_url = env::var("RPC_URL").unwrap_or_else(|_| "http://marachain:18332/".to_string());
+
     println!("Starting server at http://0.0.0.0:8080");
 
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(client.clone()))
+            .app_data(web::Data::new(rpc_url.clone()))
             .route("/", web::get().to(index))
             .route("/new-address", web::get().to(get_new_address))
             .route("/new-code", web::get().to(get_new_code))

@@ -7,11 +7,11 @@ WORKDIR /usr/src/btc-2024-hack
 # Copy the source code
 COPY . .
 
-# Build the application
-RUN cargo build --release
+# Build the application in debug mode (default)
+RUN cargo build
 
 # Set the command to run the application
-CMD ["./target/release/scale_bridge"]
+CMD ["cargo", "run", "--bin", "scale_bridge"]
 
 # Expose the application port
 EXPOSE 8080

@@ -27,7 +27,7 @@ struct AcceptData {
     code: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct RpcResponse {
     result: Option<String>,
     error: Option<serde_json::Value>,

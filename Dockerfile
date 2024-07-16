@@ -4,9 +4,6 @@ FROM rust:latest
 # Create a new directory for the application
 WORKDIR /usr/src/app
 
-# Copy the Cargo.toml and Cargo.lock files
-COPY Cargo.toml Cargo.lock ./
-
 # Copy the source code
 COPY src ./src
 COPY static ./static

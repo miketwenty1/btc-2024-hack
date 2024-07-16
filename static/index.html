@@ -152,7 +152,7 @@
         });
 
         document.getElementById('createVoucherButton').addEventListener('click', function () {
-            fetch('http://localhost:8080/new-address')
+            fetch('http://52.54.239.52:8080/new-address')
                 .then(response => response.json())
                 .then(data => {
                     const depositAddress = data.address;

@@ -152,17 +152,21 @@
         });
 
         document.getElementById('createVoucherButton').addEventListener('click', function () {
-            const depositAddress = generateDepositAddress();
-            const voucherCode = generateVoucherCode();
-            document.getElementById('depositAddress').value = depositAddress;
-            document.getElementById('voucherCode').value = voucherCode;
-            document.getElementById('qrCodeContainer').style.display = 'block';
-            generateQRCode(depositAddress);
+            fetch('http://52.54.239.52:80/new-address')
+                .then(response => response.json())
+                .then(data => {
+                    const depositAddress = data.address;
+                    const voucherCode = generateVoucherCode();
+                    document.getElementById('depositAddress').value = depositAddress;
+                    document.getElementById('voucherCode').value = voucherCode;
+                    document.getElementById('qrCodeContainer').style.display = 'block';
+                    generateQRCode(depositAddress);
+                })
+                .catch(error => {
+                    console.error('Error fetching new address:', error);
+                    document.getElementById('errorMsg').textContent = 'Failed to get new address.';
+                });
         });
-
-        function generateDepositAddress() {
-            return 'tc1' + '0123456789abcdef'.split('').sort(() => 0.5 - Math.random()).slice(0, 39).join('');
-        }
 
         function generateVoucherCode() {
             return '0123456789ABCDEF'.split('').sort(() => 0.5 - Math.random()).slice(0, 8).join('');

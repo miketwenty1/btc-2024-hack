@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scale Bridge</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 0.5em;
+            color: #4CAF50;
+        }
+
+        p {
+            font-size: 1.1em;
+            margin-bottom: 1.5em;
+        }
+
+        input[type="text"],
+        input[type="submit"],
+        button {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 10px auto;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            display: block;
+        }
+
+        input[type="submit"],
+        button {
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        input[type="submit"]:hover,
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .error {
+            color: red;
+            margin-bottom: 1em;
+        }
+
+        .qr-code {
+            margin: 20px 0;
+        }
+
+        .qr-code p {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .qr-code canvas {
+            margin: 10px auto;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Scale Bridge</h1>
+        <p>Welcome to Scale Bridge! Scale Bridge is your gateway to using Bitcoin on the scalable Anduro Sidechain
+            without the high fees of on-chain transactions. Our platform makes onboarding easy with voucher codes. Want
+            to help others get started? Create some codes for your friends. Received a code? Redeem it here and start
+            using your coins!</p>
+        <form id="redeemForm">
+            <input type="text" id="testnetAddress" placeholder="Enter your Bitcoin Testnet address">
+            <input type="text" id="redeemCode" placeholder="Enter redeem code">
+            <input type="submit" value="Redeem">
+        </form>
+        <p class="error" id="errorMsg"></p>
+
+        <button id="createVoucherButton">Create Voucher Code</button>
+
+        <div class="qr-code" id="qrCodeContainer" style="display: none;">
+            <p>Pay the QR Code to deposit money into this voucher.</p>
+            <canvas id="qrCode"></canvas>
+            <input type="text" id="depositAddress" readonly>
+            <button onclick="copyDepositAddress()">Copy Deposit Address</button>
+            <input type="text" id="voucherCode" readonly>
+            <button onclick="copyVoucherCode()">Copy Voucher Code</button>
+        </div>
+    </div>
+    <script>
+        document.getElementById('redeemForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            let testnetAddress = document.getElementById('testnetAddress').value;
+            let redeemCode = document.getElementById('redeemCode').value;
+            let errorMsg = '';
+
+            if (!testnetAddress) {
+                errorMsg = 'Please provide a valid testnet address.';
+            } else if (!/^[a-fA-F0-9]{8}$/.test(redeemCode)) {
+                errorMsg = 'Redeem code must be exactly 8 hex characters.';
+            }
+
+            if (errorMsg) {
+                document.getElementById('errorMsg').textContent = errorMsg;
+            } else {
+                document.getElementById('errorMsg').textContent = 'Redeem code is valid!';
+                // Perform the redeem action here
+            }
+        });
+
+        document.getElementById('createVoucherButton').addEventListener('click', function () {
+            const depositAddress = generateDepositAddress();
+            const voucherCode = generateVoucherCode();
+            document.getElementById('depositAddress').value = depositAddress;
+            document.getElementById('voucherCode').value = voucherCode;
+            document.getElementById('qrCodeContainer').style.display = 'block';
+            generateQRCode(depositAddress);
+        });
+
+        function generateDepositAddress() {
+            return 'tb1q' + '0123456789abcdef'.split('').sort(() => 0.5 - Math.random()).slice(0, 39).join('');
+        }
+
+        function generateVoucherCode() {
+            return '0123456789ABCDEF'.split('').sort(() => 0.5 - Math.random()).slice(0, 8).join('');
+        }
+
+        function generateQRCode(text) {
+            var qr = new QRious({
+                element: document.getElementById('qrCode'),
+                value: text,
+                size: 200
+            });
+        }
+
+        function copyDepositAddress() {
+            var copyText = document.getElementById('depositAddress');
+            copyText.select();
+            document.execCommand('copy');
+            alert('Deposit address copied to clipboard');
+        }
+
+        function copyVoucherCode() {
+            var copyText = document.getElementById('voucherCode');
+            copyText.select();
+            document.execCommand('copy');
+            alert('Voucher code copied to clipboard');
+        }
+    </script>
+</body>
+
+</html>

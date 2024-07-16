@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scale Bridge</title>
+    <link rel="icon" href="static/btccoordinatelogo.png" type="image/png">
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -26,6 +27,18 @@
             width: 100%;
             max-width: 500px;
             text-align: center;
+        }
+
+        .logo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logo img {
+            height: 50px;
+            margin-right: 15px;
         }
 
         h1 {
@@ -91,13 +104,16 @@
 
 <body>
     <div class="container">
-        <h1>Scale Bridge</h1>
+        <div class="logo">
+            <img src="static/btccoordinatelogo.png" alt="Logo">
+            <h1>Scale Bridge</h1>
+        </div>
         <p>Welcome to Scale Bridge! Scale Bridge is your gateway to using Bitcoin on the scalable Anduro Sidechain
             without the high fees of on-chain transactions. Our platform makes onboarding easy with voucher codes. Want
             to help others get started? Create some codes for your friends. Received a code? Redeem it here and start
             using your coins!</p>
         <form id="redeemForm">
-            <input type="text" id="testnetAddress" placeholder="Enter your Bitcoin Testnet address">
+            <input type="text" id="testnetAddress" placeholder="Receiving Testnet Coordinate Bitcoin Address">
             <input type="text" id="redeemCode" placeholder="Enter redeem code">
             <input type="submit" value="Redeem">
         </form>
@@ -121,10 +137,10 @@
             let redeemCode = document.getElementById('redeemCode').value;
             let errorMsg = '';
 
-            if (!testnetAddress) {
+            if (!testnetAddress.startsWith('tc1')) {
                 errorMsg = 'Please provide a valid testnet address.';
             } else if (!/^[a-fA-F0-9]{8}$/.test(redeemCode)) {
-                errorMsg = 'Redeem code must be exactly 8 hex characters.';
+                errorMsg = 'Invalid code.';
             }
 
             if (errorMsg) {
@@ -145,7 +161,7 @@
         });
 
         function generateDepositAddress() {
-            return 'tb1q' + '0123456789abcdef'.split('').sort(() => 0.5 - Math.random()).slice(0, 39).join('');
+            return 'tc1' + '0123456789abcdef'.split('').sort(() => 0.5 - Math.random()).slice(0, 39).join('');
         }
 
         function generateVoucherCode() {

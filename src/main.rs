@@ -9,8 +9,12 @@ async fn index() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| App::new().route("/", web::get().to(index)))
-        .bind("0.0.0.0:9999")?
-        .run()
-        .await
+    HttpServer::new(|| {
+        App::new()
+            .route("/", web::get().to(index))
+            .service(actix_files::Files::new("/static", "./static").show_files_listing())
+    })
+    .bind("0.0.0.0:9999")?
+    .run()
+    .await
 }

@@ -29,8 +29,8 @@ struct AcceptData {
 
 #[derive(Deserialize)]
 struct RpcResponse {
-    result: String,
-    error: Option<String>,
+    result: Option<String>,
+    error: Option<serde_json::Value>,
     id: String,
 }
 
@@ -48,7 +48,7 @@ async fn get_new_address(client: web::Data<Client>, rpc_url: web::Data<String>) 
     let response = client
         .post(rpc_url.get_ref())
         .basic_auth(rpc_user, Some(rpc_pass))
-        .header("Content-Type", "text/plain")
+        .header("Content-Type", "application/json")
         .json(&rpc_request)
         .send()
         .await;
@@ -59,13 +59,14 @@ async fn get_new_address(client: web::Data<Client>, rpc_url: web::Data<String>) 
                 match resp.json::<RpcResponse>().await {
                     Ok(rpc_response) => {
                         if let Some(error) = rpc_response.error {
-                            println!("RPC error: {}", error);
-                            HttpResponse::InternalServerError().body(error)
-                        } else {
-                            let new_address = NewAddressResponse {
-                                address: rpc_response.result,
-                            };
+                            println!("RPC error: {:?}", error);
+                            HttpResponse::InternalServerError().json(error)
+                        } else if let Some(result) = rpc_response.result {
+                            let new_address = NewAddressResponse { address: result };
                             HttpResponse::Ok().json(new_address)
+                        } else {
+                            println!("Unexpected RPC response: {:?}", rpc_response);
+                            HttpResponse::InternalServerError().body("Unexpected RPC response")
                         }
                     }
                     Err(e) => {
@@ -74,8 +75,19 @@ async fn get_new_address(client: web::Data<Client>, rpc_url: web::Data<String>) 
                     }
                 }
             } else {
-                println!("RPC request failed with status: {}", resp.status());
-                HttpResponse::InternalServerError().body("RPC request failed")
+                let status = resp.status();
+                let text = resp
+                    .text()
+                    .await
+                    .unwrap_or_else(|_| "Unknown error".to_string());
+                println!(
+                    "RPC request failed with status: {} and body: {}",
+                    status, text
+                );
+                HttpResponse::InternalServerError().body(format!(
+                    "RPC request failed with status: {} and body: {}",
+                    status, text
+                ))
             }
         }
         Err(e) => {
@@ -109,6 +121,7 @@ async fn main() -> std::io::Result<()> {
     let rpc_url = env::var("RPC_URL").unwrap_or_else(|_| "http://marachain:18332/".to_string());
 
     println!("Starting server at http://0.0.0.0:8080");
+    println!("Using RPC URL: {}", rpc_url);
 
     HttpServer::new(move || {
         App::new()

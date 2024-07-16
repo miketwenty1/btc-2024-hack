@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 async fn index() -> impl Responder {
+    println!("Accessed /");
     let path: PathBuf = "./static/index.html".parse().unwrap();
     NamedFile::open(path)
 }
@@ -33,6 +34,7 @@ struct RpcResponse {
 }
 
 async fn get_new_address(client: web::Data<Client>) -> impl Responder {
+    println!("Accessed /new-address");
     let rpc_url = "http://127.0.0.1:18332/";
     let rpc_user = "marachain";
     let rpc_pass = "marachain";
@@ -57,6 +59,7 @@ async fn get_new_address(client: web::Data<Client>) -> impl Responder {
                 match resp.json::<RpcResponse>().await {
                     Ok(rpc_response) => {
                         if let Some(error) = rpc_response.error {
+                            println!("RPC error: {}", error);
                             HttpResponse::InternalServerError().body(error)
                         } else {
                             let new_address = NewAddressResponse {
@@ -65,19 +68,25 @@ async fn get_new_address(client: web::Data<Client>) -> impl Responder {
                             HttpResponse::Ok().json(new_address)
                         }
                     }
-                    Err(_) => {
+                    Err(e) => {
+                        println!("Failed to parse RPC response: {}", e);
                         HttpResponse::InternalServerError().body("Failed to parse RPC response")
                     }
                 }
             } else {
+                println!("RPC request failed with status: {}", resp.status());
                 HttpResponse::InternalServerError().body("RPC request failed")
             }
         }
-        Err(_) => HttpResponse::InternalServerError().body("Failed to send RPC request"),
+        Err(e) => {
+            println!("Failed to send RPC request: {}", e);
+            HttpResponse::InternalServerError().body("Failed to send RPC request")
+        }
     }
 }
 
 async fn get_new_code() -> impl Responder {
+    println!("Accessed /new-code");
     let new_code = NewCodeResponse {
         code: "newcode1234".to_string(),
     };
@@ -85,6 +94,7 @@ async fn get_new_code() -> impl Responder {
 }
 
 async fn accept_address_and_code(data: web::Json<AcceptData>) -> impl Responder {
+    println!("Accessed /accept");
     println!("Received address: {}", data.address);
     println!("Received code: {}", data.code);
 
@@ -94,6 +104,8 @@ async fn accept_address_and_code(data: web::Json<AcceptData>) -> impl Responder 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let client = Client::new();
+
+    println!("Starting server at http://0.0.0.0:8080");
 
     HttpServer::new(move || {
         App::new()

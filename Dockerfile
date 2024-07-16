@@ -2,11 +2,10 @@
 FROM rust:latest
 
 # Create a new directory for the application
-WORKDIR /usr/src/app
+WORKDIR /usr/src/btc-2024-hack
 
 # Copy the source code
-COPY src ./src
-COPY static ./static
+COPY . .
 
 # Build the application
 RUN cargo build --release

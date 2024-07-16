@@ -35,7 +35,7 @@ struct RpcResponse {
 
 async fn get_new_address(client: web::Data<Client>) -> impl Responder {
     println!("Accessed /new-address");
-    let rpc_url = "http://127.0.0.1:18332/";
+    let rpc_url = "http://marachain:18332/";
     let rpc_user = "marachain";
     let rpc_pass = "marachain";
     let rpc_request = serde_json::json!({

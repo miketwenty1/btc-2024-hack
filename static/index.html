@@ -152,7 +152,7 @@
         });
 
         document.getElementById('createVoucherButton').addEventListener('click', function () {
-            fetch('http://52.54.239.52:80/new-address')
+            fetch('http://localhost:8080/new-address')
                 .then(response => response.json())
                 .then(data => {
                     const depositAddress = data.address;
@@ -194,6 +194,7 @@
             alert('Voucher code copied to clipboard');
         }
     </script>
+
 </body>
 
 </html>

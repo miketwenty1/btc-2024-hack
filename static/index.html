@@ -146,12 +146,17 @@
             let errorMsg = '';
             let successMsg = '';
 
+            console.log('Redeem button clicked');
+            console.log('Testnet Address:', testnetAddress);
+            console.log('Redeem Code:', redeemCode);
+
             if (!testnetAddress.startsWith('tc1')) {
                 errorMsg = 'Please provide a valid testnet address.';
             } else if (!/^[a-fA-F0-9]{8}$/.test(redeemCode)) {
                 errorMsg = 'Invalid code.';
             } else {
                 // Call the accept endpoint
+                console.log('Sending request to /accept');
                 fetch('http://52.54.239.52:8080/accept', {
                     method: 'POST',
                     headers: {
@@ -160,6 +165,7 @@
                     body: JSON.stringify({ address: testnetAddress, code: redeemCode }),
                 })
                     .then(response => {
+                        console.log('Response status:', response.status);
                         if (response.ok) {
                             successMsg = 'Funds are on their way!';
                             errorMsg = '';
@@ -168,6 +174,7 @@
                         }
                     })
                     .catch(error => {
+                        console.log('Error occurred:', error);
                         errorMsg = 'Code already used or another error occurred';
                         successMsg = '';
                     });

@@ -19,6 +19,7 @@ async fn list_addresses_by_label(
     rpc_user: &str,
     rpc_pass: &str,
 ) -> Result<Vec<String>, actix_web::Error> {
+    println!("Calling list_addresses_by_label with label: {}", label);
     let rpc_request = serde_json::json!({
         "jsonrpc": "1.0",
         "id": "listaddressesbylabel",
@@ -33,15 +34,21 @@ async fn list_addresses_by_label(
         .json(&rpc_request)
         .send()
         .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
+        .map_err(|e| {
+            println!("Error sending request in list_addresses_by_label: {}", e);
+            ErrorBadRequest(e.to_string())
+        })?;
 
-    let response_json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
+    let response_json: serde_json::Value = response.json().await.map_err(|e| {
+        println!("Error parsing response in list_addresses_by_label: {}", e);
+        ErrorBadRequest(e.to_string())
+    })?;
     let addresses = response_json["result"]
         .as_object()
-        .ok_or_else(|| ErrorBadRequest("No addresses found"))?
+        .ok_or_else(|| {
+            println!("No addresses found in list_addresses_by_label response");
+            ErrorBadRequest("No addresses found")
+        })?
         .keys()
         .cloned()
         .collect::<Vec<_>>();
@@ -55,6 +62,10 @@ async fn list_unspent_outputs(
     rpc_user: &str,
     rpc_pass: &str,
 ) -> Result<Vec<serde_json::Value>, actix_web::Error> {
+    println!(
+        "Calling list_unspent_outputs with addresses: {:?}",
+        addresses
+    );
     let rpc_request = serde_json::json!({
         "jsonrpc": "1.0",
         "id": "listunspent",
@@ -69,15 +80,21 @@ async fn list_unspent_outputs(
         .json(&rpc_request)
         .send()
         .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
+        .map_err(|e| {
+            println!("Error sending request in list_unspent_outputs: {}", e);
+            ErrorBadRequest(e.to_string())
+        })?;
 
-    let response_json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
+    let response_json: serde_json::Value = response.json().await.map_err(|e| {
+        println!("Error parsing response in list_unspent_outputs: {}", e);
+        ErrorBadRequest(e.to_string())
+    })?;
     let utxos = response_json["result"]
         .as_array()
-        .ok_or_else(|| ErrorBadRequest("No UTXOs found"))?
+        .ok_or_else(|| {
+            println!("No UTXOs found in list_unspent_outputs response");
+            ErrorBadRequest("No UTXOs found")
+        })?
         .clone();
     Ok(utxos)
 }
@@ -91,19 +108,23 @@ async fn create_and_send_raw_transaction(
     rpc_user: &str,
     rpc_pass: &str,
 ) -> Result<String, actix_web::Error> {
+    println!("Calling create_and_send_raw_transaction with utxos: {:?}, destination_address: {}, fee: {}", utxos, destination_address, fee);
     let mut inputs = Vec::new();
     let mut total_amount = 0.0;
 
     for utxo in &utxos {
-        let txid = utxo["txid"]
-            .as_str()
-            .ok_or_else(|| ErrorBadRequest("Missing txid"))?;
-        let vout = utxo["vout"]
-            .as_u64()
-            .ok_or_else(|| ErrorBadRequest("Missing vout"))?;
-        let amount = utxo["amount"]
-            .as_f64()
-            .ok_or_else(|| ErrorBadRequest("Missing amount"))?;
+        let txid = utxo["txid"].as_str().ok_or_else(|| {
+            println!("Missing txid in UTXO: {:?}", utxo);
+            ErrorBadRequest("Missing txid")
+        })?;
+        let vout = utxo["vout"].as_u64().ok_or_else(|| {
+            println!("Missing vout in UTXO: {:?}", utxo);
+            ErrorBadRequest("Missing vout")
+        })?;
+        let amount = utxo["amount"].as_f64().ok_or_else(|| {
+            println!("Missing amount in UTXO: {:?}", utxo);
+            ErrorBadRequest("Missing amount")
+        })?;
         total_amount += amount;
 
         inputs.push(json!({ "txid": txid, "vout": vout }));
@@ -111,6 +132,7 @@ async fn create_and_send_raw_transaction(
 
     let send_amount = total_amount - fee;
     if send_amount <= 0.0 {
+        println!("Insufficient funds to cover the transaction fee");
         return Err(ErrorBadRequest(
             "Insufficient funds to cover the transaction fee",
         ));
@@ -132,15 +154,25 @@ async fn create_and_send_raw_transaction(
         .json(&rpc_request)
         .send()
         .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
+        .map_err(|e| {
+            println!(
+                "Error sending request in create_and_send_raw_transaction: {}",
+                e
+            );
+            ErrorBadRequest(e.to_string())
+        })?;
 
-    let raw_tx_json: serde_json::Value = raw_tx_response
-        .json()
-        .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
-    let raw_tx = raw_tx_json["result"]
-        .as_str()
-        .ok_or_else(|| ErrorBadRequest("Failed to create raw transaction"))?;
+    let raw_tx_json: serde_json::Value = raw_tx_response.json().await.map_err(|e| {
+        println!(
+            "Error parsing response in create_and_send_raw_transaction: {}",
+            e
+        );
+        ErrorBadRequest(e.to_string())
+    })?;
+    let raw_tx = raw_tx_json["result"].as_str().ok_or_else(|| {
+        println!("Failed to create raw transaction");
+        ErrorBadRequest("Failed to create raw transaction")
+    })?;
 
     let sign_rpc_request = json!({
         "jsonrpc": "1.0",
@@ -156,15 +188,25 @@ async fn create_and_send_raw_transaction(
         .json(&sign_rpc_request)
         .send()
         .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
+        .map_err(|e| {
+            println!(
+                "Error sending request in signrawtransactionwithwallet: {}",
+                e
+            );
+            ErrorBadRequest(e.to_string())
+        })?;
 
-    let sign_json: serde_json::Value = sign_response
-        .json()
-        .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
-    let signed_tx = sign_json["result"]["hex"]
-        .as_str()
-        .ok_or_else(|| ErrorBadRequest("Failed to sign transaction"))?;
+    let sign_json: serde_json::Value = sign_response.json().await.map_err(|e| {
+        println!(
+            "Error parsing response in signrawtransactionwithwallet: {}",
+            e
+        );
+        ErrorBadRequest(e.to_string())
+    })?;
+    let signed_tx = sign_json["result"]["hex"].as_str().ok_or_else(|| {
+        println!("Failed to sign transaction");
+        ErrorBadRequest("Failed to sign transaction")
+    })?;
 
     let send_rpc_request = json!({
         "jsonrpc": "1.0",
@@ -180,15 +222,21 @@ async fn create_and_send_raw_transaction(
         .json(&send_rpc_request)
         .send()
         .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
+        .map_err(|e| {
+            println!("Error sending request in sendrawtransaction: {}", e);
+            ErrorBadRequest(e.to_string())
+        })?;
 
-    let send_json: serde_json::Value = send_response
-        .json()
-        .await
-        .map_err(|e| ErrorBadRequest(e.to_string()))?;
+    let send_json: serde_json::Value = send_response.json().await.map_err(|e| {
+        println!("Error parsing response in sendrawtransaction: {}", e);
+        ErrorBadRequest(e.to_string())
+    })?;
     let txid = send_json["result"]
         .as_str()
-        .ok_or_else(|| ErrorBadRequest("Failed to send transaction"))?
+        .ok_or_else(|| {
+            println!("Failed to send transaction");
+            ErrorBadRequest("Failed to send transaction")
+        })?
         .to_string();
 
     Ok(txid)
@@ -315,8 +363,9 @@ async fn accept_address_and_code(
         match list_addresses_by_label(&client, &data.code, &rpc_url, rpc_user, rpc_pass).await {
             Ok(addresses) => addresses,
             Err(e) => {
+                println!("Error in list_addresses_by_label: {}", e);
                 return HttpResponse::InternalServerError()
-                    .body(format!("Failed to list addresses: {}", e))
+                    .body(format!("Failed to list addresses: {}", e));
             }
         };
 
@@ -324,8 +373,9 @@ async fn accept_address_and_code(
     let utxos = match list_unspent_outputs(&client, addresses, &rpc_url, rpc_user, rpc_pass).await {
         Ok(utxos) => utxos,
         Err(e) => {
+            println!("Error in list_unspent_outputs: {}", e);
             return HttpResponse::InternalServerError()
-                .body(format!("Failed to list unspent outputs: {}", e))
+                .body(format!("Failed to list unspent outputs: {}", e));
         }
     };
 
@@ -343,8 +393,9 @@ async fn accept_address_and_code(
     {
         Ok(txid) => txid,
         Err(e) => {
+            println!("Error in create_and_send_raw_transaction: {}", e);
             return HttpResponse::InternalServerError()
-                .body(format!("Failed to create and send transaction: {}", e))
+                .body(format!("Failed to create and send transaction: {}", e));
         }
     };
 

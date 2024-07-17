@@ -18,7 +18,7 @@ async fn list_addresses_by_label(
     rpc_url: &str,
     rpc_user: &str,
     rpc_pass: &str,
-) -> Result<Vec<String>, reqwest::Error> {
+) -> Result<Vec<String>, actix_web::Error> {
     let rpc_request = serde_json::json!({
         "jsonrpc": "1.0",
         "id": "listaddressesbylabel",
@@ -32,12 +32,16 @@ async fn list_addresses_by_label(
         .header("Content-Type", "application/json")
         .json(&rpc_request)
         .send()
-        .await?;
+        .await
+        .map_err(|e| ErrorBadRequest(e.to_string()))?;
 
-    let response_json: serde_json::Value = response.json().await?;
+    let response_json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| ErrorBadRequest(e.to_string()))?;
     let addresses = response_json["result"]
         .as_object()
-        .unwrap()
+        .ok_or_else(|| ErrorBadRequest("No addresses found"))?
         .keys()
         .cloned()
         .collect::<Vec<_>>();
@@ -50,7 +54,7 @@ async fn list_unspent_outputs(
     rpc_url: &str,
     rpc_user: &str,
     rpc_pass: &str,
-) -> Result<Vec<serde_json::Value>, reqwest::Error> {
+) -> Result<Vec<serde_json::Value>, actix_web::Error> {
     let rpc_request = serde_json::json!({
         "jsonrpc": "1.0",
         "id": "listunspent",
@@ -64,10 +68,17 @@ async fn list_unspent_outputs(
         .header("Content-Type", "application/json")
         .json(&rpc_request)
         .send()
-        .await?;
+        .await
+        .map_err(|e| ErrorBadRequest(e.to_string()))?;
 
-    let response_json: serde_json::Value = response.json().await?;
-    let utxos = response_json["result"].as_array().unwrap().clone();
+    let response_json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| ErrorBadRequest(e.to_string()))?;
+    let utxos = response_json["result"]
+        .as_array()
+        .ok_or_else(|| ErrorBadRequest("No UTXOs found"))?
+        .clone();
     Ok(utxos)
 }
 
@@ -79,7 +90,7 @@ async fn create_and_send_raw_transaction(
     rpc_url: &str,
     rpc_user: &str,
     rpc_pass: &str,
-) -> Result<String, actix_web::error::Error> {
+) -> Result<String, actix_web::Error> {
     let mut inputs = Vec::new();
     let mut total_amount = 0.0;
 
@@ -181,67 +192,6 @@ async fn create_and_send_raw_transaction(
         .to_string();
 
     Ok(txid)
-}
-#[derive(Debug, Deserialize)]
-struct SendAllRequest {
-    label: String,
-    destination_address: String,
-    fee: f64,
-}
-
-async fn send_all(
-    client: web::Data<Client>,
-    rpc_url: web::Data<String>,
-    req: web::Json<SendAllRequest>,
-) -> impl Responder {
-    let rpc_user = "marachain";
-    let rpc_pass = "marachain";
-
-    // List addresses by label
-    let addresses =
-        match list_addresses_by_label(&client, &req.label, &rpc_url, rpc_user, rpc_pass).await {
-            Ok(addresses) => addresses,
-            Err(e) => {
-                return HttpResponse::InternalServerError()
-                    .body(format!("Failed to list addresses: {}", e))
-            }
-        };
-
-    // List unspent outputs
-    let utxos = match list_unspent_outputs(&client, addresses, &rpc_url, rpc_user, rpc_pass).await {
-        Ok(utxos) => utxos,
-        Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(format!("Failed to list unspent outputs: {}", e))
-        }
-    };
-
-    // Create and send raw transaction
-    let txid = match create_and_send_raw_transaction(
-        &client,
-        utxos,
-        &req.destination_address,
-        req.fee,
-        &rpc_url,
-        rpc_user,
-        rpc_pass,
-    )
-    .await
-    {
-        Ok(txid) => txid,
-        Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(format!("Failed to create and send transaction: {}", e))
-        }
-    };
-
-    HttpResponse::Ok().body(txid)
-}
-
-async fn index() -> impl Responder {
-    println!("Accessed /");
-    let path: PathBuf = "./static/index.html".parse().unwrap();
-    NamedFile::open(path)
 }
 
 #[derive(Serialize)]
@@ -348,12 +298,63 @@ async fn get_new_code() -> impl Responder {
     HttpResponse::Ok().json(new_code)
 }
 
-async fn accept_address_and_code(data: web::Json<AcceptData>) -> impl Responder {
+async fn accept_address_and_code(
+    client: web::Data<Client>,
+    rpc_url: web::Data<String>,
+    data: web::Json<AcceptData>,
+) -> impl Responder {
     println!("Accessed /accept");
     println!("Received address: {}", data.address);
     println!("Received code: {}", data.code);
 
-    HttpResponse::Ok().body("Address and code accepted")
+    let rpc_user = "marachain";
+    let rpc_pass = "marachain";
+
+    // List addresses by label
+    let addresses =
+        match list_addresses_by_label(&client, &data.code, &rpc_url, rpc_user, rpc_pass).await {
+            Ok(addresses) => addresses,
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .body(format!("Failed to list addresses: {}", e))
+            }
+        };
+
+    // List unspent outputs
+    let utxos = match list_unspent_outputs(&client, addresses, &rpc_url, rpc_user, rpc_pass).await {
+        Ok(utxos) => utxos,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Failed to list unspent outputs: {}", e))
+        }
+    };
+
+    // Create and send raw transaction
+    let txid = match create_and_send_raw_transaction(
+        &client,
+        utxos,
+        &data.address,
+        0.0001, // example fee
+        &rpc_url,
+        rpc_user,
+        rpc_pass,
+    )
+    .await
+    {
+        Ok(txid) => txid,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .body(format!("Failed to create and send transaction: {}", e))
+        }
+    };
+
+    HttpResponse::Ok().json(json!({ "status": "success", "txid": txid }))
+}
+
+async fn index() -> impl Responder {
+    println!("Accessed /");
+    let path: PathBuf = "./static/index.html".parse().unwrap();
+    NamedFile::open(path)
 }
 
 #[actix_web::main]
@@ -374,7 +375,6 @@ async fn main() -> std::io::Result<()> {
             .route("/new-address", web::post().to(get_new_address))
             .route("/new-code", web::get().to(get_new_code))
             .route("/accept", web::post().to(accept_address_and_code))
-            .route("/send-all", web::post().to(send_all))
             .service(actix_files::Files::new("/static", "./static").show_files_listing())
     })
     .bind("0.0.0.0:8080")?

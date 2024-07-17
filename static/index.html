@@ -84,6 +84,11 @@
             margin-bottom: 1em;
         }
 
+        .success {
+            color: green;
+            margin-bottom: 1em;
+        }
+
         .qr-code {
             margin: 20px 0;
         }
@@ -118,6 +123,7 @@
             <input type="submit" value="Redeem">
         </form>
         <p class="error" id="errorMsg"></p>
+        <p class="success" id="successMsg"></p>
 
         <button id="createVoucherButton">Create Voucher Code</button>
 
@@ -136,33 +142,46 @@
             let testnetAddress = document.getElementById('testnetAddress').value;
             let redeemCode = document.getElementById('redeemCode').value;
             let errorMsg = '';
+            let successMsg = '';
 
             if (!testnetAddress.startsWith('tc1')) {
                 errorMsg = 'Please provide a valid testnet address.';
             } else if (!/^[a-fA-F0-9]{8}$/.test(redeemCode)) {
                 errorMsg = 'Invalid code.';
+            } else {
+                // Call the accept endpoint
+                fetch('http://52.54.239.52:8080/accept', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ address: testnetAddress, code: redeemCode }),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            successMsg = 'Redeem code is valid!';
+                        } else {
+                            errorMsg = 'Redeem failed.';
+                        }
+                    })
+                    .catch(error => {
+                        errorMsg = 'An error occurred. Please try again.';
+                    });
             }
 
-            if (errorMsg) {
-                document.getElementById('errorMsg').textContent = errorMsg;
-            } else {
-                document.getElementById('errorMsg').textContent = 'Redeem code is valid!';
-                // Perform the redeem action here
-            }
+            document.getElementById('errorMsg').textContent = errorMsg;
+            document.getElementById('errorMsg').style.display = errorMsg ? 'block' : 'none';
+            document.getElementById('successMsg').textContent = successMsg;
+            document.getElementById('successMsg').style.display = successMsg ? 'block' : 'none';
         });
 
         document.getElementById('createVoucherButton').addEventListener('click', function () {
-            const voucherCode = generateVoucherCode();
-            fetch('http://52.54.239.52:8080/new-address', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ code: voucherCode })
-            })
+            fetch('http://52.54.239.52:8080/new-address')
                 .then(response => response.json())
                 .then(data => {
                     const depositAddress = data.address;
+                    const voucherCode = generateVoucherCode();
                     document.getElementById('depositAddress').value = depositAddress;
                     document.getElementById('voucherCode').value = voucherCode;
                     document.getElementById('qrCodeContainer').style.display = 'block';

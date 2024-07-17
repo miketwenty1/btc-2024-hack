@@ -131,9 +131,11 @@
             <p>Pay the QR Code to deposit money into this voucher.</p>
             <canvas id="qrCode"></canvas>
             <input type="text" id="depositAddress" readonly>
-            <button onclick="copyDepositAddress()">Copy Deposit Address</button>
+            <button onclick="copyToClipboard('depositAddress', 'addressMsg')">Copy Deposit Address</button>
             <input type="text" id="voucherCode" readonly>
-            <button onclick="copyVoucherCode()">Copy Voucher Code</button>
+            <button onclick="copyToClipboard('voucherCode', 'codeMsg')">Copy Voucher Code</button>
+            <p class="success" id="addressMsg"></p>
+            <p class="success" id="codeMsg"></p>
         </div>
     </div>
     <script>
@@ -157,18 +159,16 @@
                     },
                     body: JSON.stringify({ address: testnetAddress, code: redeemCode }),
                 })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            successMsg = 'Redeem code is valid!';
+                    .then(response => {
+                        if (response.ok) {
+                            successMsg = 'Funds are on their way!';
                             errorMsg = '';
                         } else {
-                            errorMsg = 'Redeem failed.';
-                            successMsg = '';
+                            throw new Error('Network response was not ok.');
                         }
                     })
                     .catch(error => {
-                        errorMsg = 'An error occurred. Please try again.';
+                        errorMsg = 'Code already used or another error occurred';
                         successMsg = '';
                     });
             }
@@ -214,18 +214,14 @@
             });
         }
 
-        function copyDepositAddress() {
-            var copyText = document.getElementById('depositAddress');
+        function copyToClipboard(elementId, messageElementId) {
+            var copyText = document.getElementById(elementId);
             copyText.select();
             document.execCommand('copy');
-            alert('Deposit address copied to clipboard');
-        }
-
-        function copyVoucherCode() {
-            var copyText = document.getElementById('voucherCode');
-            copyText.select();
-            document.execCommand('copy');
-            alert('Voucher code copied to clipboard');
+            document.getElementById(messageElementId).textContent = 'Copied to clipboard';
+            setTimeout(() => {
+                document.getElementById(messageElementId).textContent = '';
+            }, 2000);
         }
     </script>
 

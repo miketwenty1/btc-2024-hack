@@ -122,8 +122,8 @@
             <input type="text" id="redeemCode" placeholder="Enter redeem code">
             <input type="submit" value="Redeem">
         </form>
-        <p class="error" id="errorMsg"></p>
-        <p class="success" id="successMsg"></p>
+        <p class="error" id="errorMsg" style="display: none;"></p>
+        <p class="success" id="successMsg" style="display: none;"></p>
 
         <button id="createVoucherButton">Create Voucher Code</button>
 
@@ -152,8 +152,10 @@
 
             if (!testnetAddress.startsWith('tc1')) {
                 errorMsg = 'Please provide a valid testnet address.';
+                console.log('Invalid testnet address');
             } else if (!/^[a-fA-F0-9]{8}$/.test(redeemCode)) {
                 errorMsg = 'Invalid code.';
+                console.log('Invalid redeem code');
             } else {
                 // Call the accept endpoint
                 console.log('Sending request to /accept');
@@ -170,13 +172,22 @@
                             successMsg = 'Funds are on their way!';
                             errorMsg = '';
                         } else {
+                            console.log('Error response from server');
                             throw new Error('Network response was not ok.');
                         }
+                        document.getElementById('errorMsg').textContent = errorMsg;
+                        document.getElementById('errorMsg').style.display = errorMsg ? 'block' : 'none';
+                        document.getElementById('successMsg').textContent = successMsg;
+                        document.getElementById('successMsg').style.display = successMsg ? 'block' : 'none';
                     })
                     .catch(error => {
                         console.log('Error occurred:', error);
                         errorMsg = 'Code already used or another error occurred';
                         successMsg = '';
+                        document.getElementById('errorMsg').textContent = errorMsg;
+                        document.getElementById('errorMsg').style.display = errorMsg ? 'block' : 'none';
+                        document.getElementById('successMsg').textContent = successMsg;
+                        document.getElementById('successMsg').style.display = successMsg ? 'block' : 'none';
                     });
             }
 
